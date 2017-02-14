@@ -89,10 +89,12 @@ class GooglePhotos
     cln = HTTPClient.new
     if title.nil? or summary.nil? then
       # without metadata
+      # Todo 動かない
       header['Slug'] = title unless title.nil?
       body = {'upload'=> imagefile}
     else
       # with metadata
+      # Todo make_atomの実装。あとたぶん動かない
       header['Content-Type'] = 'multipart/related'
       body = [{'Content-Type' => 'application/atom+xml',
               :content => make_atom(title, summary)},
@@ -110,8 +112,7 @@ if __FILE__ == $0 then
   open('debug_authorization_code.txt') {|f|
   gp.authorization_code = f.read
   }
-  puts gp.album_list
-  al = gp.upload_image(open('/dev/null'))
+  al = gp.upload_image(open('../test.jpg'))
   puts al
 end
 
