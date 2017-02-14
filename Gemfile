@@ -1,7 +1,8 @@
 source 'https://rubygems.org'
 
 group :default do
-  gem 'oauth', '>= 0.5.1'
+  gem 'oauth2', '~> 1.3.0'
+  gem 'httpclient', '~> 2.8.3'
 end
 
 group :test do
