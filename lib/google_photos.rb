@@ -50,8 +50,8 @@ class GooglePhotos
   def token
     return false if @authorization_code.nil?
     @token = @token || make_token_from_hash || make_new_token
-    if @token.expired? then
-      @token.refresh!
+    if @token.expired?
+      @token = @token.refresh!
       @cache_token_hash[@authorization_code] = @token.to_hash
       open(@token_cache_filename, 'w') { |f|
         JSON.dump(@cache_token_hash, f)
