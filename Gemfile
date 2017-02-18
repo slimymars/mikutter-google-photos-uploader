@@ -6,6 +6,6 @@ end
 
 group :test do
   gem 'test-unit', '~> 3.0'
-  gem 'rake'
-  gem 'webmock'
+  gem 'rake', '~> 10.1'
+  gem 'webmock', '~> 1.17'
 end
