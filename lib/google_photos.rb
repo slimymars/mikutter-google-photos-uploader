@@ -1,6 +1,6 @@
 require 'oauth2'
-require 'webrick'
 require 'json'
+require 'net/http'
 
 class GooglePhotos
   OOB_URI = 'urn:ietf:wg:oauth:2.0:oob'
@@ -93,39 +93,60 @@ class GooglePhotos
     album_list
   end
 
-  def upload_image(imagefile, album_id: 'default', title: nil, summary: nil)
-    url = 'https://picasaweb.google.com/data/feed/api/user/default/albumid/' + album_id
+  def make_uploaddata_in_info(imagefile, mime_type, title, summary, boundary)
+    body = <<"BODY"
+Media multipart posting
+--#{boundary}
+Content-Type: application/atom+xml
+
+<entry xmlns='http://www.w3.org/2005/Atom'>
+  <title>#{title}</title>
+  <summary>#{summary}</summary>
+  <category scheme="http://schemas.google.com/g/2005#kind"
+    term="http://schemas.google.com/photos/2007#photo"/>
+</entry>
+--#{boundary}
+Content-Type: #{mime_type}
+
+#{imagefile.read}
+--#{boundary}--
+BODY
+    body
+  end
+
+  def upload_image(imagefile, mime_type, album_id: 'default', title: nil, summary: nil)
+    boundary = 'END_OF_PART'
+    url = URI('https://picasaweb.google.com/data/feed/api/user/default/albumid/' + album_id)
     header = {'Authorization' => 'Bearer ' + token.token,
-              'GData-Version' => 3}
-    cln = HTTPClient.new
-    if title.nil? or summary.nil? then
+              'GData-Version' => '3'}
+
+    http = Net::HTTP.new(url.host, url.port)
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    if title.nil? or summary.nil?
       # without metadata
       # Todo 動かない
-      header['Slug'] = title unless title.nil?
-      body = {'upload'=> imagefile}
+      header['Content-Type'] = mime_type
+      header['Slug'] = title || summary || ''
+      body = imagefile.read
     else
       # with metadata
       # Todo make_atomの実装。あとたぶん動かない
-      header['Content-Type'] = 'multipart/related'
-      body = [{'Content-Type' => 'application/atom+xml',
-              :content => make_atom(title, summary)},
-              {:content => imagefile}
-      ]
+      header['Content-Type'] = 'multipart/related; boundary="%s"' % boundary
+      body = make_uploaddata_in_info(imagefile, mime_type, title, summary, boundary)
     end
-    res = cln.post(url, body, header)
-    res
+    req = Net::HTTP::Post.new(url.path, header)
+    req.body = body
+    http.request(req)
   end
 end
 
 if __FILE__ == $0 then
   gp = GooglePhotos.new
-  puts gp.authorization_url
   open('debug_authorization_code.txt') {|f|
     gp.authorization_code = f.read
   }
   al = gp.album_list
   puts al
-  al = gp.upload_image(open('../test.jpg'))
-  puts al
 end
-
