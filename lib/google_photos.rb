@@ -1,7 +1,6 @@
 require 'oauth2'
 require 'webrick'
 require 'json'
-require 'httpclient'
 
 class GooglePhotos
   OOB_URI = 'urn:ietf:wg:oauth:2.0:oob'
@@ -17,21 +16,20 @@ class GooglePhotos
     )
     @authorization_code = authorization_code
     @token_cache_filename = token_cache_filename || (Pathname(File.expand_path(File.dirname(__FILE__))) + 'token_cache.json').to_s
-    begin
+    if File.exist?(@token_cache_filename)
       open(@token_cache_filename, 'r') {|f|
         @cache_token_hash = JSON.load(f)
       }
       @token = make_token_from_hash
-    rescue
+    else
       @cache_token_hash = {}
       @token = nil
     end
   end
 
-
   def make_token_from_hash
     return nil if @authorization_code.nil?
-    if @cache_token_hash.has_key?(@authorization_code) then
+    if @cache_token_hash.has_key?(@authorization_code)
       OAuth2::AccessToken.from_hash(@client, @cache_token_hash[@authorization_code])
     else
       nil
@@ -75,9 +73,22 @@ class GooglePhotos
 
   def album_list
     album_list = []
-    response = token.get('https://picasaweb.google.com/data/feed/api/user/default').parsed
-    response['feed']['entry'].each do |entry|
-      album_list << {:id => entry['id'][1], :name => entry['title']['__content__']}
+    response = token.get('https://picasaweb.google.com/data/feed/api/user/default', headers:{'Gdata-Version' => '3'})
+    xml = response.parsed
+    if xml.nil?
+      throw response.body
+    end
+    if xml.has_key?('feed') && xml['feed'].has_key?('entry')
+      if xml['feed']['entry'].class.name == 'Hash'
+        entrys = [xml['feed']['entry']]
+      else
+        entrys = xml['feed']['entry']
+      end
+      entrys.each do |entry|
+        album_list << {:id => entry['id'][1], :name => entry['title']}
+      end
+    else
+      throw xml
     end
     album_list
   end
@@ -110,8 +121,10 @@ if __FILE__ == $0 then
   gp = GooglePhotos.new
   puts gp.authorization_url
   open('debug_authorization_code.txt') {|f|
-  gp.authorization_code = f.read
+    gp.authorization_code = f.read
   }
+  al = gp.album_list
+  puts al
   al = gp.upload_image(open('../test.jpg'))
   puts al
 end
