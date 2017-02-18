@@ -100,8 +100,8 @@ Media multipart posting
 Content-Type: application/atom+xml
 
 <entry xmlns='http://www.w3.org/2005/Atom'>
-  <title>#{title}</title>
-  <summary>#{summary}</summary>
+  <title>#{title.encode(xml: :text)}</title>
+  <summary>#{summary.encode(xml: :text)}</summary>
   <category scheme="http://schemas.google.com/g/2005#kind"
     term="http://schemas.google.com/photos/2007#photo"/>
 </entry>
@@ -126,13 +126,11 @@ BODY
 
     if title.nil? or summary.nil?
       # without metadata
-      # Todo 動かない
       header['Content-Type'] = mime_type
       header['Slug'] = title || summary || ''
       body = imagefile.read
     else
       # with metadata
-      # Todo make_atomの実装。あとたぶん動かない
       header['Content-Type'] = 'multipart/related; boundary="%s"' % boundary
       body = make_uploaddata_in_info(imagefile, mime_type, title, summary, boundary)
     end
@@ -142,7 +140,7 @@ BODY
   end
 end
 
-if __FILE__ == $0 then
+if __FILE__ == $0
   gp = GooglePhotos.new
   open('debug_authorization_code.txt') {|f|
     gp.authorization_code = f.read
