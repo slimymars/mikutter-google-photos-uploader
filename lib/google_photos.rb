@@ -1,6 +1,7 @@
 require 'oauth2'
 require 'json'
 require 'net/http'
+require 'tempfile'
 
 class GooglePhotos
   OOB_URI = 'urn:ietf:wg:oauth:2.0:oob'
@@ -108,10 +109,15 @@ Content-Type: application/atom+xml
 --#{boundary}
 Content-Type: #{mime_type}
 
-#{imagefile.read}
---#{boundary}--
 BODY
-    body
+    # tempfile通さないとみくたんから呼んだときにセグフォで死ぬ
+    tf = Tempfile.new("image")
+    tf.write(body)
+    tf.write(imagefile.read)
+    tf.write("\n--#{boundary}--")
+    tf.close
+    tf.open
+    tf.read
   end
 
   def upload_image(imagefile, mime_type, album_id: 'default', title: nil, summary: nil)
