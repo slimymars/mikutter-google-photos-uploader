@@ -47,6 +47,7 @@ class GooglePhotos
     new_token
   end
   def token
+    # todo throwエラーしたほうがいい？
     return false if @authorization_code.nil?
     @token = @token || make_token_from_hash || make_new_token
     if @token.expired?
