@@ -103,15 +103,19 @@ Plugin.create(:'mikutter-google-photos-uploader') do
 #{message.to_s}
 https://twitter.com/#{message.user[:idname]}/status/#{message.id}
 SUMMARY
+    threads = []
     message.entity.select { |e| e[:type] == 'photo' }.map do |e|
-      open(e[:url]) { |f|
-        req = gp.upload_image(f, f.content_type, album_id:album_id, title: e[:url], summary: summary)
-        if req.code != '201'
-          # todo エラー告知
-          puts "うまくいきませんでした。"
-        end
-      }
+      threads << Thread.new do
+        open(e[:url]) { |f|
+          req = gp.upload_image(f, f.content_type, album_id:album_id, title: e[:url], summary: summary)
+          if req.code != '201'
+            # todo エラー告知
+            puts "うまくいきませんでした。"
+          end
+        }
+      end
     end
+    threads.each {|t| t.join}
   end
 
   def authrization_code_url_open
