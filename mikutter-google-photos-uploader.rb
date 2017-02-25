@@ -154,7 +154,7 @@ ERRMSG
     if ac.nil?
       Gtk::Dialog.alert('先に設定してね')
     elsif message.entity.select{|e| e[:type] == 'photo'}.empty?
-      Gtk::Dialog.alert(puts '画像がみつからないよ')
+      Gtk::Dialog.alert('画像がみつからないよ')
     else
       gp = GooglePhotos.new(authorization_code: ac)
       al = UserConfig[:gp_uploader_enable_album_list] || gp.album_list
