@@ -12,31 +12,32 @@ Plugin.create(:'mikutter-google-photos-uploader') do
       input "Authorization_code", :gp_uploader_authorization_code
       pack_start(authrization_code_url_open)
     end
-    # todo 表示するアルバムリストの設定 現時点では動かないのでコメント化
-=begin
     settings "表示するアルバムリスト" do
       listview = AlbumListControl.new
       pack_start(Gtk::HBox.new(false, 4).
           add(listview).closeup(listview.buttons(Gtk::VBox)))
     end
-=end
-  end
-
-  class GooglePhotosAlbumModel < Retriever::Model
-    field.string :name, required: true
-    field.string :id, required: true
   end
 
   class AlbumListControl < Gtk::CRUD
     include Gtk::TreeViewPrettyScroll
     COL_NAME = 0
     COL_ID = 1
-    COL_SERVICE = 2
+    def initialize
+      super()
+      @updatable = false
+      unless UserConfig[:gp_uploader_enable_album_list].nil?
+        UserConfig[:gp_uploader_enable_album_list].each do |item|
+          iter = model.model.append
+          iter[COL_NAME] = item[:name]
+          iter[COL_ID] = item[:id]
+        end
+      end
+    end
 
     def column_schemer
       [{:kind => :text, :type => String, :label => 'アルバム名'},
        {:kind => :text, :type => String, :label => 'ID'},
-       {:type => Object},
       ].freeze
     end
 
@@ -46,26 +47,25 @@ Plugin.create(:'mikutter-google-photos-uploader') do
       end
     end
 
+
+    def buttons(box_klass)
+      box_klass.new(false, 4).closeup(create_button).closeup(delete_button)
+    end
+
     def get_add_album
       ac = UserConfig[:gp_uploader_authorization_code]
       if ac.nil?
-        # todo エラー告知
-        puts '先にアカウント設定してね'
+        Gtk::Dialog.alert('先にアカウント設定してね')
       else
         gp = GooglePhotos.new(authorization_code: ac)
-        al = UserConfig[:gp_uploader_enable_album_list] || gp.album_list
+        al = gp.album_list
 
         # GTKメニューを構築する
         menu = Gtk::Menu.new
         al.each do |item|
           menu_item = Gtk::MenuItem.new(item[:name])
           menu_item.ssc(:activate) { |w|
-            force_record_create(
-                GooglePhotosAlbumModel.new(
-                    name: item[:name],
-                    id: item[:id]
-                )
-            )
+            force_record_create([item[:name],item[:id]])
           }
           menu.append(menu_item)
         end
@@ -82,6 +82,20 @@ Plugin.create(:'mikutter-google-photos-uploader') do
         # メニューを表示
         menu.show_all.popup(nil, nil, 0, 0)
       end
+    end
+
+    def on_created(iter)
+      items = UserConfig[:gp_uploader_enable_album_list] || []
+      UserConfig[:gp_uploader_enable_album_list] = items + [{
+          id: iter[COL_ID],
+          name: iter[COL_NAME]
+      }]
+    end
+    def on_deleted(iter)
+      UserConfig[:gp_uploader_enable_album_list] -= [{
+          id: iter[COL_ID],
+          name: iter[COL_NAME]
+      }]
     end
   end
 
@@ -138,7 +152,7 @@ SUMMARY
       puts '画像ないよ'
     else
       gp = GooglePhotos.new(authorization_code: ac)
-      al = gp.album_list
+      al = UserConfig[:gp_uploader_enable_album_list] || gp.album_list
 
       # GTKメニューを構築する
       menu = make_menu(gp, message, al)
