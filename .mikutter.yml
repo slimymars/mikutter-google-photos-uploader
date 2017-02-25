@@ -3,7 +3,7 @@ slug: :mikutter-google-photos-uploader
 depends:
   mikutter: 3.5.2
   plugin: []
-version: '1.0'
+version: '1.0.0'
 author: slimymars
 name: 画像をGooglePhotosにアップロードするやつ
 description: Tweeetに含まれる画像をGooglePhotosにアップロードするやつです。
