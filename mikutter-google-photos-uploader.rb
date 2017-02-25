@@ -121,10 +121,17 @@ SUMMARY
     message.entity.select { |e| e[:type] == 'photo' }.map do |e|
       threads << Thread.new do
         open(e[:url]) { |f|
-          req = gp.upload_image(f, f.content_type, album_id:album_id, title: e[:url], summary: summary)
-          if req.code != '201'
-            # todo エラー告知
-            puts "うまくいきませんでした。"
+          res = gp.upload_image(f, f.content_type, album_id:album_id, title: e[:url], summary: summary)
+          if res.code != '201'
+            errmsg = <<"ERRMSG"
+うまくいきませんでした
+-------------------------
+#{res.code} : #{res.message}
+#{res}
+
+#{res.body}
+ERRMSG
+            Gtk::Dialog.alert(errmsg)
           end
         }
       end
@@ -145,11 +152,9 @@ SUMMARY
     message = opt.messages.first
     ac = UserConfig[:gp_uploader_authorization_code]
     if ac.nil?
-      # todo エラー告知
-      puts '先に設定してね'
+      Gtk::Dialog.alert('先に設定してね')
     elsif message.entity.select{|e| e[:type] == 'photo'}.empty?
-      # todo エラー告知
-      puts '画像ないよ'
+      Gtk::Dialog.alert(puts '画像がみつからないよ')
     else
       gp = GooglePhotos.new(authorization_code: ac)
       al = UserConfig[:gp_uploader_enable_album_list] || gp.album_list
