@@ -120,8 +120,9 @@ SUMMARY
     threads = []
     message.entity.select { |e| e[:type] == 'photo' }.map do |e|
       threads << Thread.new do
-        open(e[:url]) { |f|
-          res = gp.upload_image(f, f.content_type, album_id:album_id, title: e[:url], summary: summary)
+        url = /pbs\.twimg\.com/.match?(e[:url]) ? e[:url].gsub(/:large$|:thumb$|:orig$|$/, ':orig') : e[:url]
+        open(url) { |f|
+          res = gp.upload_image(f, f.content_type, album_id:album_id, title: url, summary: summary)
           if res.code != '201'
             errmsg = <<"ERRMSG"
 うまくいきませんでした
