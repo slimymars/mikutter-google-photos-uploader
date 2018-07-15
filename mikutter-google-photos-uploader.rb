@@ -118,9 +118,10 @@ Plugin.create(:'mikutter-google-photos-uploader') do
 https://twitter.com/#{message.user[:idname]}/status/#{message.id}
 SUMMARY
     threads = []
-    message.entity.select { |e| e[:type] == 'photo' }.map do |e|
+    message[:extended_entities][:media].select { |e| e[:type] == 'photo' }.map do |e|
       threads << Thread.new do
-        open(e[:url]) { |f|
+        url = e[:media_url] + ":orig"
+        open(url) { |f|
           res = gp.upload_image(f, f.content_type, album_id:album_id, title: e[:url], summary: summary)
           if res.code != '201'
             errmsg = <<"ERRMSG"
@@ -153,7 +154,7 @@ ERRMSG
     ac = UserConfig[:gp_uploader_authorization_code]
     if ac.nil?
       Gtk::Dialog.alert('先に設定してね')
-    elsif message.entity.select{|e| e[:type] == 'photo'}.empty?
+    elsif message[:extended_entities] == nil or message[:extended_entities][:media] == nil or message[:extended_entities][:media].select{|e| e[:type] == 'photo'}.empty? then
       Gtk::Dialog.alert('画像がみつからないよ')
     else
       gp = GooglePhotos.new(authorization_code: ac)
